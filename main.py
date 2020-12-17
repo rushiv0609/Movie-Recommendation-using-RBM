@@ -9,39 +9,16 @@ import time
 from math import ceil
 from load_data import *
 from RBM import RBM
+from recommend import *
 
-def recommend(user_id):
-    '''
-    Parameters
-    ----------
-    user_id : id of user in dataframe
-
-    Returns
-    -------
-    movie-cat_ids of top 10 recommended movies
-
-    '''
-    # convert user data to RBM Input
-    user_df = data[data['userId'] == user_id].values
-    input = torch.zeros(num_movies)
-    for row in user_df:
-        input[int(row[1])] = row[2]/5
-    input = input.unsqueeze(dim = 0).to(device)
-
-    # Give input to RBM
-    h, _h = rbm.calc_hidden(input)
-    v, _ = rbm.calc_visible(_h)
-    out = v.cpu().squeeze() # visible layer probabilities after 1 cycle
-
-    input = input.squeeze()
-    out[input > 0] = -1 # set the value of already rated movies by user to -1
-    order = out.argsort(descending= True)[:10] # select 10 max values from the output vector which will be recommended
-    return order # Return the movie-ids of top 10 recommended movies
+#load data 
 
 data, movies = load_dataset()
 movie_arr, ratings_arr, d, movies = pre_process(data, movies)
 num_movies = len(movies)
+
 # train-test split 80:20
+
 movie_train, movie_test, ratings_train, ratings_test = train_test_split(movie_arr, ratings_arr, test_size = 0.2, shuffle = True)
 
 print("Number of total users : ",movie_arr.shape[0])
@@ -49,6 +26,7 @@ print("Number of users for training : ",movie_train.shape[0])
 print("Number of users for testing : ",movie_test.shape[0])
 
 # Empty CUDA cache and create RBM object on GPU
+
 torch.cuda.empty_cache()
 n_visible = num_movies
 n_hidden = 1024
@@ -59,12 +37,12 @@ print("Number of visible nodes = ", n_visible)
 print("Number of hidden nodes = ", n_hidden)
 print("------------------------------------------------------")
 
-'''
-Training Phase 
-'''
+
+#Training Phase 
+
 print("\nTraining Started \n")
 start_time = time.time()
-epochs = 10
+epochs = 50
 batch_size = 128
 N = movie_train.shape[0]
 num_batches = ceil(N / batch_size)
@@ -90,9 +68,8 @@ for epoch in range(epochs):
 
 print("Training time = %s"%(time.time()-start_time))
 print("------------------------------------------------------")
-'''
-Testing Phase
-'''
+
+#Testing Phase
 
 print("\nTesting Started")
 batch_size = 128
@@ -118,16 +95,20 @@ while i < N:
 print("\nTest Loss = %s\n"%(loss/num_batches))
 print("------------------------------------------------------")
 
-'''
-Save Model and recommend movies
-'''
+
+#Save Model and recommend movies
+
 path = 'RBM.pkl'
 with open(path, 'wb') as output:
     pickle.dump(rbm, output)
+    
+with open("movie-id-dict.pkl", 'wb') as output:
+    pickle.dump(d, output)
+    
 print("\nRBM pickle file saved at : %s\n"%(os.path.abspath(path)))
 print("------------------------------------------------------")
 user_id = 6
-inds = recommend(user_id)
+inds = recommend(rbm, user_id, data, num_movies)
 rec_movies = [movies.loc[d[x.item()]]['title'] for x in inds]
 print("\nRecommended Movies for User-id %s : \n"%(user_id))
 for movie in rec_movies:
