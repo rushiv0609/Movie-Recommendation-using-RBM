@@ -29,6 +29,14 @@ RBM has 2 layers : Visible and Hidden
 - Visible layer size : Number of movies
 - Hidden layer size : 1024 units
 
+# Steps to run
+First install the required packages
+```
+git clone https://github.com/rushiv0609/Movie-Recommendation-using-RBM.git
+pip install -r requirements.txt
+python main.py
+```
+
 ## Training 
 Each input batch is transformed into a torch tensor of shape [batch-size, number-of-movies] using movies-list & ratings-list. Then this transformed input is passed to RBM.
 
